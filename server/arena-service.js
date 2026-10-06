@@ -1,8 +1,17 @@
 import {createArena,advance,addPlayer,setInput,command,snapshot,MAX_PLAYERS} from './simulation.js';
 
 export class ArenaError extends Error { constructor(status,message){super(message);this.status=status} }
+const arenaLocks=new Map();
 export async function tokenDigest(token){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))),n=>n.toString(16).padStart(2,'0')).join('')}
-export async function handleArena(db,data,token,now=Date.now()){
+export async function handleArena(db,data,token,now){
+  const code=String(data.code||'ARENA').trim().toUpperCase();
+  const previous=arenaLocks.get(code)??Promise.resolve();
+  let release;const queued=new Promise(resolve=>{release=resolve});arenaLocks.set(code,queued);
+  await previous;
+  try{return await handleArenaLocked(db,data,token,now??Date.now())}
+  finally{release();if(arenaLocks.get(code)===queued)arenaLocks.delete(code)}
+}
+async function handleArenaLocked(db,data,token,now){
   if(!['join','step','leave'].includes(data.action))throw new ArenaError(400,'Nieznana akcja.');
   const code=String(data.code||'ARENA').trim().toUpperCase();
   if(!/^(ARENA|[A-Z0-9]{6})$/.test(code))throw new ArenaError(400,'Kod pokoju musi mieć 6 liter lub cyfr.');
