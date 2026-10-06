@@ -1,0 +1,142 @@
+/* Graphite arena HUD */
+body .menu-card{max-height:calc(100dvh - 70px);overflow-y:auto}
+.menu-identity,.menu-actions{display:contents}
+body .menu-card h1{font-size:54px;line-height:.92;margin:10px 0}
+body .menu-card .tank-logo{display:none}
+body .online-button{margin-top:10px;background:#bd9bff}
+.difficulty-picker{margin:12px 0;text-align:left}.difficulty-picker>span{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;color:#b8c8d8;margin-bottom:7px}.difficulty-picker>div{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.difficulty-picker button{border:1px solid #536170;border-radius:7px;background:#192330;color:#dce8f5;padding:9px 4px;font:800 12px system-ui;cursor:pointer}.difficulty-picker button[aria-pressed="true"]{background:#69d7ed;color:#0b151c;border-color:#9beafa}.difficulty-picker small{display:block;margin-top:7px;color:#c3d1de;font-size:11px;line-height:1.4}
+body .play-button:disabled{opacity:.6;cursor:wait}
+.room-controls{margin-top:18px;text-align:left}.room-controls label{font-size:12px}.room-controls label span{font-weight:400;opacity:.65;float:right;text-transform:none}
+.room-input{display:flex;gap:8px;margin-top:8px}.room-input input{min-width:0;flex:1;margin:0!important;font-size:13px!important;padding:11px!important;text-transform:uppercase}
+.room-input button,#copyRoomBtn{border:1px solid #586479;border-radius:7px;background:#273348;color:#e9f3ff;font:700 11px system-ui;cursor:pointer;padding:9px}
+.room-controls p,#joinStatus,.online-note{font-size:13px;line-height:1.5;color:#b8c8d8;margin:8px 0}
+#joinStatus:empty{display:none}#joinStatus{color:#ffe1a7}
+#onlineHud{position:fixed;left:50%;top:15px;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:10px;color:#e7f0ff;font:700 12px system-ui;background:#142032ed;border:1px solid #586479;border-radius:10px;padding:7px 12px}
+#onlineHud[hidden],.online-note[hidden]{display:none}#connectionStatus{font-size:11px;color:#aedabb}
+#onlineHud[data-state="reconnecting"] #connectionStatus,#onlineHud[data-state="closed"] #connectionStatus{color:#ffc986}
+@media(max-width:700px){body .menu-card{padding:24px;max-height:calc(100dvh - 52px)}body .menu-card h1{font-size:38px}body .menu-card .intro{font-size:14px;margin:10px 0}body .menu-card .controls{margin-top:12px}#onlineHud{top:58px;max-width:94vw;width:max-content;padding:5px 8px;gap:6px;font-size:11px}#copyRoomBtn{font-size:10px;padding:6px}#connectionStatus{max-width:125px}}
+:root{--cyan:#69d7ed;--cyan2:#379bb5;--panel:#161d28;--line:#43505d;--muted:#a0afbe}
+body .topbar{height:62px;background:linear-gradient(#0f1621dd,#0f162100);border:0;padding:0 22px}
+body .brand{letter-spacing:.08em;font-size:14px}body .level-pill{background:#18212dde;border:1px solid #526275;border-radius:20px;padding:8px 16px;font-size:12px}
+body .icon-button{border-radius:50%;background:#1e2936c9;border-color:#536170}
+body .score-card{top:82px;border-left:0;background:#111925c9;border:1px solid #53617070;border-radius:9px;padding:12px 16px;min-width:130px}
+body .score-card strong{font-size:26px;margin-top:4px}body .score-card span{font-size:12px}
+body .leaderboard{top:82px;border-radius:9px;background:#111925c9;border-color:#53617070;width:210px}
+body .leaderboard h2{font-size:12px}body .leaderboard li{font-size:14px;padding:6px 0}
+body .leaderboard li{align-items:center}body .leaderboard .board-stats{display:flex;align-items:center;gap:7px;margin-left:7px}body .leaderboard .board-stats i{font-style:normal;color:#53cfff;font-size:10px;white-space:nowrap}body .leaderboard .board-stats b{font-size:11px}
+body #tankInfo{top:172px}body #tankInfo strong{font-size:20px}body #classPanel{top:82px;left:18px;width:min(368px,calc(100vw - 36px));border-radius:5px;background:#171b20f2;transform:none}
+body #upgradePanel{background:#111925c4;box-shadow:none;border:1px solid #53617070;padding:10px;border-radius:10px;width:275px}
+body #upgradePanel button{border-radius:12px;border-width:1px;min-height:27px;padding:4px 10px;font-size:13px;gap:8px}
+body #upgradePanel>div{gap:4px}body #upgradePanel p{font-size:12px;line-height:1.4}
+body .xp-wrap{background:#111925bc;border:1px solid #53617070;padding:12px 16px;border-radius:12px;bottom:16px}
+body .score-card,body .level-pill{display:none}
+body .xp-wrap{width:min(560px,58vw);padding:9px 12px 11px}
+body .rank-meters{display:grid;grid-template-columns:1fr .62fr;gap:7px;margin:3px 0 7px}
+body .rank-track,body .level-track{position:relative;height:18px;border:3px solid #59606b;border-radius:10px;background:#343c48;overflow:hidden;box-shadow:0 1px 0 #0a0d12}
+body .rank-track>div,body .level-track>div{position:absolute;inset:0 auto 0 0;width:0;min-width:6%;transition:width .2s}
+body .score-meter .rank-track>div{background:#82bd38}body .kills-meter .rank-track>div{background:#39aee3}
+body .rank-track strong,body .level-track strong{position:absolute;z-index:2;inset:0;display:flex;align-items:center;justify-content:center;gap:.28em;color:#fff;font:900 12px/1 system-ui,sans-serif;text-shadow:-1px -1px 0 #454a52,1px -1px 0 #454a52,-1px 1px 0 #454a52,1px 1px 0 #454a52;white-space:nowrap}
+body .level-track{height:27px;border-radius:14px}body .level-track>div{background:#f2ca42}body .level-track strong{font-size:16px}
+body .health-track{border-radius:8px;background:#394351;height:8px;margin-bottom:9px}body #hpFill{background:#7fca92}
+body .xp-meta{font-size:12px;color:#bdc9d6}body #modeStatus{left:320px;bottom:122px;color:#c0cbd7;font-size:12px}
+body .menu-card{clip-path:none;border-radius:18px;border-color:#4c5d70;background:linear-gradient(145deg,#202d3c,#101824);box-shadow:0 30px 90px #0008}
+body .menu-card h1{letter-spacing:-.04em}body .play-button{clip-path:none;border-radius:8px;background:#69d7ed}body .menu-card input{border-radius:8px}
+body .dialog-card{border-radius:16px;background:#17212e}
+@media(max-width:1050px){body .xp-wrap{width:calc(100vw - 335px)}}
+@media(max-width:700px){body .topbar{padding:0 14px}body .score-card{top:70px;padding:8px 12px;min-width:104px}body #tankInfo{top:163px}body #classPanel{top:75px}body #upgradePanel{width:210px;bottom:155px;max-height:32dvh}body #upgradePanel button{font-size:12px}body .xp-wrap{width:65vw;padding:7px 9px;bottom:8px}body .rank-track{height:15px}body .rank-track strong{font-size:10px}body .level-track{height:23px}body .level-track strong{font-size:13px}body #modeStatus{left:14px;top:139px;bottom:auto;font-size:10px}}
+
+/* Landscape touch layout: keep the arena clear between two thumb controls. */
+.mobile-controls .stick span{position:absolute;inset:0;display:grid;place-content:center;text-align:center;font:900 9px/1.2 system-ui,sans-serif;letter-spacing:.06em;color:#d9eff6;text-shadow:0 1px 4px #000;pointer-events:none}
+.mobile-controls .stick{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+#mobileUpgradeToggle,#upgradeDrawerHandle{display:none}
+#orientationHint{display:none}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:600px){
+  body #menu{place-items:center;padding:6px;overflow-y:auto}
+  body #menu .menu-card{width:min(760px,calc(100vw - 12px));max-height:none;min-height:min-content;padding:14px 18px;display:grid;grid-template-columns:minmax(215px,.85fr) minmax(280px,1.15fr);gap:18px;overflow:visible}
+  body #menu .menu-identity,body #menu .menu-actions{display:block;min-width:0}
+  body #menu .eyebrow{margin:0 0 4px;font-size:9px}
+  body #menu .menu-card h1{margin:2px 0 5px;font-size:34px;line-height:.84}
+  body #menu .intro{margin:5px 0 9px;font-size:11px;line-height:1.3}
+  body #menu .menu-card label{margin-bottom:4px;font-size:9px}
+  body #menu .menu-card input{height:34px;margin-bottom:6px;padding:0 10px;font-size:13px}
+  body #menu .difficulty-picker{margin:6px 0 0}
+  body #menu .difficulty-picker>span{margin-bottom:4px;font-size:9px}
+  body #menu .difficulty-picker button{padding:6px 3px;font-size:10px}
+  body #menu .difficulty-picker small{margin-top:4px;font-size:9px;line-height:1.25}
+  body #menu .play-button{min-height:46px;padding:7px 12px}
+  body #menu .play-button span{font-size:14px}
+  body #menu .online-button{margin-top:7px}
+  body #menu .room-controls{margin-top:9px}
+  body #menu .room-input{margin-top:5px;gap:5px}
+  body #menu .room-input input{margin:0!important}
+  body #menu .room-input button{padding:6px;font-size:9px}
+  body #menu .room-controls p{margin:4px 0;font-size:9px;line-height:1.25}
+  body #menu .controls{display:none}
+  body #menu>footer{display:none}
+}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:800px){
+  body .topbar{height:42px;padding:0 12px}
+  body .brand{font-size:11px;gap:6px}
+  body .brand-mark{width:14px;height:14px;border-width:2px}
+  body .icon-button{width:34px;height:34px}
+  body .level-pill{top:4px;padding:6px 11px;font-size:10px}
+  body .level-pill strong{font-size:13px}
+  body .score-card{top:48px;left:10px;min-width:82px;padding:5px 9px}
+  body .score-card span{font-size:9px}
+  body .score-card strong{font-size:17px;margin-top:1px}
+  body .leaderboard{display:none!important}
+  body #modeStatus{left:10px;top:auto;bottom:92px;font-size:9px}
+  body .mobile-controls.active{display:flex;left:12px;right:12px;bottom:10px;align-items:end;pointer-events:none}
+  body .mobile-controls .stick{width:104px;height:104px;pointer-events:auto;border-color:#a3bac866;background:#12182070;backdrop-filter:blur(2px)}
+  body .mobile-controls .stick i{width:42px;height:42px;left:30px;top:30px}
+  body .mobile-controls .stick span{font-size:9px}
+  body .xp-wrap{left:50%;right:auto;bottom:7px;transform:translateX(-50%);width:min(330px,42vw);padding:5px 7px}
+  body .health-meta{font-size:10px}
+  body .health-meta span{font-size:9px}
+  body .health-track{height:6px;margin-bottom:4px}
+  body .rank-meters{gap:5px;margin:2px 0 4px}
+  body .rank-track{height:13px;border-width:2px}
+  body .rank-track strong{font-size:9px}
+  body .level-track{height:18px;border-width:2px}
+  body .level-track strong{font-size:10px}
+  body:has(.mobile-controls.active) #mobileUpgradeToggle{display:flex}
+  body #mobileUpgradeToggle{position:fixed;z-index:8;top:7px;left:10px;width:max-content;min-width:0;transform:none;height:28px;align-items:center;justify-content:flex-start;gap:6px;padding:0 8px;border:1px solid #60718488;border-radius:8px;background:#111925e8;color:#d9e6ef;font:850 9px/1 system-ui,sans-serif;letter-spacing:.08em;box-shadow:0 4px 16px #0006}
+  body #mobileUpgradeToggle strong{display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#45d5ff;color:#071016;font-size:10px}
+  body #upgradePanel,body #upgradePanel.visible{left:50%;top:82px;bottom:auto;width:min(520px,72vw);max-height:calc(100dvh - 145px);padding:7px 9px 18px;overflow:auto;opacity:0;pointer-events:none;transform:translate(-50%,-12px) scale(.98);transition:opacity .18s,transform .18s;background:#111925f4}
+  body #upgradePanel.mobile-open,body #upgradePanel.visible.mobile-open{opacity:1;pointer-events:auto;transform:translate(-50%,0) scale(1)}
+  body #upgradePanel>span{font-size:9px;margin-bottom:5px}
+  body #upgradePanel>div{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  body #upgradePanel button{min-height:29px;padding:4px 6px;font-size:10px;gap:4px}
+  body #upgradePanel button b{margin:0;font-size:10px}
+  body #upgradePanel button small{font-size:9px}
+  body #upgradePanel p{font-size:9px;margin:5px 0 0}
+  body #upgradePanel #upgradeDrawerHandle{display:block;position:absolute;left:50%;bottom:2px;width:64px;height:14px;min-height:0;padding:0;transform:translateX(-50%);border:0;background:transparent;touch-action:none}
+  body #upgradePanel #upgradeDrawerHandle i{display:block;width:34px;height:3px;margin:auto;border-radius:2px;background:#8ca0b1}
+  body #classPanel{top:48px;left:50%;width:min(380px,55vw);max-height:calc(100dvh - 120px);padding:8px;transform:translateX(-50%)}
+  body #classPanel h2{font-size:11px;margin:0 0 4px}
+  body #classPanel p{font-size:10px;margin:3px 0}
+  body #classOptions button{padding:6px;font-size:11px}
+  body #classOptions button span{font-size:10px}
+  body #onlineHud{top:45px;max-width:58vw;font-size:10px;padding:4px 7px}
+  body #onlineHud #connectionStatus{max-width:140px;font-size:9px}
+  body #modeStatus{display:none!important}
+  body:has(.mobile-controls.active) #upgradePanel,
+  body:has(.mobile-controls.active) #upgradePanel.visible,
+  body:has(.mobile-controls.active) #upgradePanel.mobile-open{
+    display:block;left:10px;top:42px;bottom:auto;width:205px;height:130px;max-height:130px;
+    padding:6px 7px;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-8px);background:#111925e8
+  }
+  body:has(.mobile-controls.active) #upgradePanel.mobile-open,
+  body:has(.mobile-controls.active) #upgradePanel.visible.mobile-open{opacity:1;pointer-events:auto;transform:none}
+  body #upgradePanel>span{height:18px;margin:0 2px 4px;font-size:9px}
+  body #upgradePanel>div{display:block;height:95px;overflow-x:hidden;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  body #upgradePanel>div::-webkit-scrollbar{width:3px}
+  body #upgradePanel>div::-webkit-scrollbar-thumb{background:#607184;border-radius:3px}
+  body #upgradePanel>div>button{width:100%;height:34px;min-height:34px;margin:0 0 4px;padding:3px 6px;font-size:10px;scroll-snap-align:start}
+  body #upgradePanel p,body #upgradePanel #upgradeDrawerHandle{display:none!important}
+}
+@media (pointer:coarse) and (orientation:portrait) and (max-width:900px){
+  #orientationHint{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;width:min(310px,85vw);padding:14px 18px;border:1px solid #607184;border-radius:12px;background:#101722ed;color:#eaf5ff;text-align:center;font:700 14px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px #0008}
+  body:has(.mobile-controls.active) #orientationHint{display:block}
+  body:has(.mobile-controls.active) #upgradePanel,body:has(.mobile-controls.active) .mobile-controls{display:none!important}
+}
