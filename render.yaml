@@ -7,3 +7,12 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
+  - type: web
+    name: neon-arena-eu
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
