@@ -69,7 +69,7 @@
       <div class="menu-actions">
         <button class="play-button" id="playBtn"><span>SOLO</span><small>WEJDŹ DO GRY</small><b>→</b></button>
         <button class="play-button online-button" id="onlineBtn"><span>MULTIPLAYER</span><small>GRAJ ONLINE · DO 8 OSÓB</small><b>↗</b></button>
-        <div class="room-controls">
+        <div class="room-controls" hidden>
           <label for="roomCode">POKÓJ ZE ZNAJOMYMI <span>opcjonalnie</span></label>
           <div class="room-input"><input id="roomCode" maxlength="6" placeholder="Pusta rubryka = wspólna arena" autocomplete="off" autocapitalize="characters" spellcheck="false"/><button id="newRoomBtn" type="button">LOSUJ KOD</button></div>
           <p>Wpiszcie ten sam 6-znakowy kod i wybierzcie Multiplayer.</p>
@@ -121,6 +121,6 @@
   </div>
   <div id="orientationHint" role="status">Obróć telefon poziomo, żeby wygodniej grać</div>
   <div id="onlineHud" hidden><span id="roomLabel"></span><button id="copyRoomBtn" type="button">KOPIUJ LINK</button><span id="connectionStatus" role="status"></span></div>
-  <script type="module" src="game.js?v=102"></script>
+  <script type="module" src="game.js?v=103"></script>
 </body>
 </html>
