@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#10131a" />
+  <meta name="description" content="Neon Arena — dynamiczna gra zręcznościowa o czołgach, geometrycznych celach i zdobywaniu poziomów." />
+  <title>Neon Arena</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310131a'/%3E%3Cpath d='M29 23h28v10H29z' fill='%2348d7ff'/%3E%3Ccircle cx='25' cy='35' r='15' fill='%2348d7ff' stroke='%23090b10' stroke-width='5'/%3E%3Ccircle cx='25' cy='35' r='5' fill='%23d9f7ff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css?v=87" />
+  <link rel="stylesheet" href="refresh.css?v=87" />
+</head>
+<body>
+  <canvas id="game" aria-label="Plansza gry Neon Arena"></canvas>
+
+  <header class="topbar" aria-label="Informacje o rozgrywce">
+    <div class="level-pill">POZIOM <strong id="level">1</strong></div>
+    <button class="icon-button" id="pauseBtn" aria-label="Pauza" title="Pauza (Esc)">Ⅱ</button>
+  </header>
+
+  <aside class="score-card" aria-live="polite">
+    <span>WYNIK</span>
+    <strong id="score">0</strong>
+  </aside>
+
+  <section class="leaderboard" aria-label="Ranking">
+    <h2>RANKING</h2>
+    <ol id="leaderboardList"></ol>
+  </section>
+
+  <div class="xp-wrap" aria-label="Wynik, zabójstwa i postęp poziomu">
+    <div class="rank-meters">
+      <div class="rank-meter score-meter">
+        <div class="rank-track"><div id="scoreFill"></div><strong>Score: <span id="scoreMeterValue">0</span></strong></div>
+      </div>
+      <div class="rank-meter kills-meter">
+        <div class="rank-track"><div id="killsFill"></div><strong>Kills: <span id="killsValue">0</span></strong></div>
+      </div>
+    </div>
+    <div class="level-track">
+      <div id="xpFill"></div>
+      <strong>Level <span id="levelBottom">1</span> <span id="tankNameBottom">Basic</span></strong>
+    </div>
+    <span id="xpText" class="visually-hidden">0 / 100</span>
+  </div>
+
+  <div id="modeStatus" aria-live="polite"></div>
+  <aside id="tankInfo" aria-hidden="true"><strong id="tankName">Basic</strong><span id="classProgress">Nowa klasa: poziom 15</span></aside>
+  <section id="classPanel" hidden aria-label="Wybór klasy czołgu">
+    <header><div><h2>ULEPSZ CZOŁG</h2><p id="classChoiceHint">Wybierz czołg · statystyki zostają</p></div><button id="classDismiss" type="button">Nie ulepszaj</button></header>
+    <div id="classOptions"></div>
+  </section>
+  <button id="classToggle" type="button" hidden>KLASA</button>
+  <main class="overlay visible" id="menu">
+    <section class="menu-card">
+      <div class="menu-identity">
+        <div class="tank-logo" aria-hidden="true"><span></span></div>
+        <p class="eyebrow">ARENA / SEKTOR 01</p>
+        <h1>NEON<br><em>ARENA</em></h1>
+        <p class="intro">Zbieraj punkty, niszcz figury i przejmij pierwsze miejsce.</p>
+        <label for="nickname">TWÓJ NICK</label>
+        <input id="nickname" maxlength="16" autocomplete="nickname" value="Gracz" />
+        <div class="difficulty-picker" role="group" aria-label="Poziom trudności gry solo">
+          <span>TRUDNOŚĆ SOLO</span>
+          <div><button type="button" data-difficulty="easy" aria-pressed="true">EASY</button><button type="button" data-difficulty="medium" aria-pressed="false">MEDIUM</button><button type="button" data-difficulty="hard" aria-pressed="false">HARD</button></div>
+          <small id="difficultyDescription">6 botów · zwykłe statystyki · EXP ×1</small>
+        </div>
+      </div>
+      <div class="menu-actions">
+        <button class="play-button" id="playBtn"><span>SOLO</span><small>WEJDŹ DO GRY</small><b>→</b></button>
+        <button class="play-button online-button" id="onlineBtn"><span>MULTIPLAYER</span><small>GRAJ ONLINE · DO 8 OSÓB</small><b>↗</b></button>
+        <div class="room-controls">
+          <label for="roomCode">POKÓJ ZE ZNAJOMYMI <span>opcjonalnie</span></label>
+          <div class="room-input"><input id="roomCode" maxlength="6" placeholder="Pusta rubryka = wspólna arena" autocomplete="off" autocapitalize="characters" spellcheck="false"/><button id="newRoomBtn" type="button">LOSUJ KOD</button></div>
+          <p>Wpiszcie ten sam 6-znakowy kod i wybierzcie Multiplayer.</p>
+        </div>
+        <p id="joinStatus" role="status"></p>
+        <div class="controls">
+          <span><kbd>WASD</kbd> RUCH</span>
+          <span><i class="mouse-icon"></i> CELUJ I STRZELAJ</span>
+        </div>
+      </div>
+    </section>
+    <footer>E — AUTOOGIEŃ · C — OBRÓT · TAB — TOPKA</footer>
+  </main>
+
+  <div class="overlay" id="pauseMenu">
+    <section class="dialog-card">
+      <p class="eyebrow">GRA WSTRZYMANA</p>
+      <h2>PAUZA</h2>
+      <p id="pauseNotice" class="online-note" hidden>Gra online trwa dalej. Twój czołg nadal może zostać trafiony.</p>
+      <button class="play-button compact" id="resumeBtn"><span>WRÓĆ DO GRY</span><b>→</b></button>
+      <button class="text-button" id="menuBtn">ZAKOŃCZ ROZGRYWKĘ</button>
+    </section>
+  </div>
+
+  <div class="overlay" id="gameOver">
+    <section class="dialog-card">
+      <p class="eyebrow">KONIEC RUNU</p>
+      <h2>ROZBITY</h2>
+      <p class="result">Wynik <strong id="finalScore">0</strong> • Poziom <strong id="finalLevel">1</strong></p>
+      <button class="play-button compact" id="againBtn"><span>JESZCZE RAZ</span><b>↻</b></button>
+      <button class="text-button" id="overMenuBtn">MENU GŁÓWNE</button>
+    </section>
+  </div>
+
+  <button id="mobileUpgradeToggle" type="button" aria-controls="upgradePanel" aria-expanded="false">
+    <span>ULEPSZENIA</span><strong id="mobileUpgradeCount">0</strong>
+  </button>
+
+  <div class="upgrade-panel" id="upgradePanel" aria-live="polite">
+    <span>ULEPSZENIA <strong id="upgradeCount">Punkty: 0</strong></span>
+    <div id="upgradeRows"></div>
+    <p>+1 punkt za poziom · kliknij lub naciśnij 1–8</p>
+    <button id="upgradeDrawerHandle" type="button" aria-label="Zwiń ulepszenia"><i></i></button>
+  </div>
+
+  <div class="mobile-controls" aria-label="Sterowanie dotykowe">
+    <div id="moveStick" class="stick move-stick" role="application" aria-label="Lewy drążek: poruszanie"><i></i><span>RUCH</span></div>
+    <div id="aimStick" class="stick aim-stick" role="application" aria-label="Prawy drążek: celowanie i strzelanie"><i></i><span>CELUJ<br>I STRZELAJ</span></div>
+  </div>
+  <div id="orientationHint" role="status">Obróć telefon poziomo, żeby wygodniej grać</div>
+  <div id="onlineHud" hidden><span id="roomLabel"></span><button id="copyRoomBtn" type="button">KOPIUJ LINK</button><span id="connectionStatus" role="status"></span></div>
+  <script type="module" src="game.js?v=102"></script>
+</body>
+</html>
