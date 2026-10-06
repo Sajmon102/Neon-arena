@@ -220,15 +220,14 @@ import {createBot,gainBot,steerBot} from './bots.js?v=95';
     ui.upgrades.classList.toggle('visible',pendingUpgrades>0);firstSnapshot=false;updateHud();updateVitals();
   }
   async function startOnline(){
-    const code=$('#roomCode').value.trim().toUpperCase();
-    if(code&&!/^[A-Z0-9]{6}$/.test(code)){$('#joinStatus').textContent='Kod pokoju: dokładnie 6 liter lub cyfr.';return}
+    const code='ARENA';
     $('#playBtn').disabled=true;$('#onlineBtn').disabled=true;$('#newRoomBtn').disabled=true;$('#joinStatus').textContent='Łączenie ze wspólną areną…';
     network?.leave();mode='online';firstSnapshot=true;classKey='';networkState='connected';reset();enemies=[];shapes=[];
     const client=new OnlineArena({input:onlineInput,onState:receiveOnline,onStatus:onlineStatus});network=client;
     try{
       const packet=await client.join(code,player.name);if(!packet)return;
       state='playing';ui.menu.classList.remove('visible');ui.over.classList.remove('visible');ui.pause.classList.remove('visible');$('.mobile-controls').classList.add('active');
-      $('#onlineHud').hidden=false;$('#roomLabel').textContent='POKÓJ '+packet.code;
+      $('#onlineHud').hidden=false;$('#roomLabel').textContent='WSPÓLNA ARENA';
       $('#pauseNotice').hidden=false;$('#pauseNotice').textContent='Gra online trwa dalej. Twój czołg nadal może zostać trafiony.';$('#resumeBtn').disabled=false;
       $('#joinStatus').textContent='';last=performance.now();updateVitals();
     }catch(error){client.leave();network=null;mode='solo';state='menu';$('#joinStatus').textContent=error.name==='AbortError'?'Arena nie odpowiedziała. Spróbuj ponownie.':error.message}
@@ -575,9 +574,8 @@ import {createBot,gainBot,steerBot} from './bots.js?v=95';
   $('#playBtn').onclick=()=>start(1,false,null,selectedDifficulty);$('#onlineBtn').onclick=startOnline;$('#againBtn').onclick=()=>{if(mode==='online')network?.command('respawn');else if(!player.alive)start(1,true,Math.floor(player.score*.4),player.difficulty)};$('#pauseBtn').onclick=()=>pause();$('#resumeBtn').onclick=()=>pause(false);$('#menuBtn').onclick=toMenu;$('#overMenuBtn').onclick=toMenu;document.querySelectorAll('[data-upgrade]').forEach(b=>b.onclick=()=>upgrade(b.dataset.upgrade));
   const difficultyCopy={easy:'4 boty · statystyki ×1 · EXP ×1',medium:'6 botów · lepsze AI · statystyki ×1 · EXP ×1,25',hard:'8 botów · najlepsze AI · statystyki ×1 · EXP ×1,5'};
   document.querySelectorAll('[data-difficulty]').forEach(b=>b.onclick=()=>{selectedDifficulty=b.dataset.difficulty;document.querySelectorAll('[data-difficulty]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('#difficultyDescription').textContent=difficultyCopy[selectedDifficulty]});
-  $('#newRoomBtn').onclick=()=>{const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';$('#roomCode').value=Array.from(crypto.getRandomValues(new Uint8Array(6)),n=>alphabet[n%alphabet.length]).join('');$('#joinStatus').textContent='Wyślij ten kod znajomemu i wejdź do Multiplayer.'};
-  $('#copyRoomBtn').onclick=async()=>{const url=new URL('/arena.html',location.origin);url.searchParams.set('room',network?.code??'ARENA');try{await navigator.clipboard.writeText(url.href);$('#copyRoomBtn').textContent='SKOPIOWANO';setTimeout(()=>$('#copyRoomBtn').textContent='KOPIUJ LINK',1800)}catch{$('#connectionStatus').textContent='Wyślij znajomemu kod: '+network?.code}};
-  const invitedRoom=new URLSearchParams(location.search).get('room');if(invitedRoom&&/^[A-Z0-9]{6}$/i.test(invitedRoom))$('#roomCode').value=invitedRoom.toUpperCase();
+  $('#newRoomBtn').onclick=()=>{};
+  $('#copyRoomBtn').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin);$('#copyRoomBtn').textContent='SKOPIOWANO';setTimeout(()=>$('#copyRoomBtn').textContent='KOPIUJ LINK',1800)}catch{$('#connectionStatus').textContent='Adres gry: '+location.origin}};
   addEventListener('pagehide',()=>network?.leave());
   let touchMove={x:0,y:0},touchFire=false,touchAimAngle=null,touchAimStrength=0;
   const stickResetters=[];
