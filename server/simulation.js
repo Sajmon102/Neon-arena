@@ -7,6 +7,7 @@ const REGEN_DELAY=5;
 const SHAPE_RESPAWN_DELAY=5;
 const CRASHER_SPEED=135;
 const CRASHER_VISION_RANGE=650;
+const COLLISION_CELL_SIZE=192;
 const rand=(a,b)=>a+Math.random()*(b-a);
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const normalRandom=()=>{const a=Math.max(Number.EPSILON,Math.random()),b=Math.random();return Math.sqrt(-2*Math.log(a))*Math.cos(2*Math.PI*b)};
@@ -99,6 +100,24 @@ function bulletImpactTime(first,second){
   const dot=ox*dx+oy*dy,disc=dot*dot-speed*c;if(disc<0)return null;
   const time=(-dot-Math.sqrt(disc))/speed;return time>=0&&time<=1?time:null;
 }
+function eachGridCell(grid,minX,maxX,minY,maxY,visit){
+  const x0=Math.floor(minX/COLLISION_CELL_SIZE),x1=Math.floor(maxX/COLLISION_CELL_SIZE);
+  const y0=Math.floor(minY/COLLISION_CELL_SIZE),y1=Math.floor(maxY/COLLISION_CELL_SIZE);
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)visit(grid,x+','+y);
+}
+function insertGridBox(grid,object,minX,maxX,minY,maxY){
+  eachGridCell(grid,minX,maxX,minY,maxY,key=>{let bucket=grid.get(key);if(!bucket)grid.set(key,bucket=[]);bucket.push(object)})
+}
+function sweptBounds(o,padding=0){
+  const x=o.prevX??o.x,y=o.prevY??o.y,r=(o.r??0)+padding;
+  return [Math.min(x,o.x)-r,Math.max(x,o.x)+r,Math.min(y,o.y)-r,Math.max(y,o.y)+r]
+}
+function bulletCollisionGrid(bullets){
+  const grid=new Map();for(let i=0;i<bullets.length;i++){const b=bullets[i];if(b.life<=0)continue;insertGridBox(grid,i,...sweptBounds(b))}return grid;
+}
+function targetCollisionGrid(targets){
+  const grid=new Map();for(let i=0;i<targets.length;i++){const t=targets[i];if(t.hp<=0)continue;insertGridBox(grid,i,t.x-t.r,t.x+t.r,t.y-t.r,t.y+t.r)}return grid;
+}
 export function applyBulletKnockback(first,second,time){
   const ax=(first.prevX??first.x)+(first.x-(first.prevX??first.x))*time,ay=(first.prevY??first.y)+(first.y-(first.prevY??first.y))*time;
   const bx=(second.prevX??second.x)+(second.x-(second.prevX??second.x))*time,by=(second.prevY??second.y)+(second.y-(second.prevY??second.y))*time;
@@ -181,12 +200,15 @@ function tick(a,dt,now){
     b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(b.life<=0)continue;
   }
   a.bullets.push(...spawnedBullets);
+  const bulletGrid=bulletCollisionGrid(a.bullets);
   for(let i=0;i<a.bullets.length;i++){
     const first=a.bullets[i];if(first.life<=0)continue;
-    for(let j=i+1;j<a.bullets.length;j++){
+    const nearby=new Set(),bounds=sweptBounds(first);
+    eachGridCell(bulletGrid,...bounds,key=>{for(const j of bulletGrid.get(key)??[])if(j>i)nearby.add(j)});
+    for(const j of [...nearby].sort((x,y)=>x-y)){
       const second=a.bullets[j];
-      const collisionTime=bulletImpactTime(first,second);
-      if(second.life<=0||first.owner===second.owner||first.bulletHits.includes(second.id)||collisionTime===null)continue;
+      if(second.life<=0||first.owner===second.owner||first.bulletHits.includes(second.id))continue;
+      const collisionTime=bulletImpactTime(first,second);if(collisionTime===null)continue;
       first.bulletHits.push(second.id);second.bulletHits.push(first.id);
       applyBulletKnockback(first,second,collisionTime);
       const firstDamage=first.damage,secondDamage=second.damage;
@@ -197,11 +219,13 @@ function tick(a,dt,now){
       if(first.life<=0)break;
     }
   }
+  const targets=[...a.shapes,...a.players],targetGrid=targetCollisionGrid(targets);
   for(const b of a.bullets){
     if(b.life<=0)continue;
     const owner=a.players.find(p=>p.id===b.owner);
-    const impacts=[...a.shapes,...a.players].filter(t=>t.hp>0&&t.id!==b.owner&&!b.hits.includes(t.id)&&!(!t.type&&t.shieldUntil>a.time))
-      .map(t=>({target:t,at:impactTime(b,t)})).filter(i=>i.at!==null).sort((x,y)=>x.at-y.at);
+    const candidates=new Set(),bounds=sweptBounds(b);
+    eachGridCell(targetGrid,...bounds,key=>{for(const i of targetGrid.get(key)??[])candidates.add(i)});
+    const impacts=[];for(const i of candidates){const t=targets[i];if(t.hp<=0||t.id===b.owner||b.hits.includes(t.id)||(!t.type&&t.shieldUntil>a.time))continue;const at=impactTime(b,t);if(at!==null)impacts.push({target:t,at})}impacts.sort((x,y)=>x.at-y.at);
     for(const {target} of impacts){
       const targetHp=target.hp,push=b.pushability/(BULLET_RAW_STATS.pushability||1);
       b.hits.push(target.id);hurt(a,target,target.type?b.damage:b.tankDamage,owner);target.vx+=b.vx*(target.type ? .06 : .12)*push;target.vy+=b.vy*(target.type ? .06 : .12)*push;
@@ -251,9 +275,12 @@ export function command(a,p,c,now){
 }
 export function snapshot(a,id,code,revision){
   // Explicit projections: no session hashes, inputs or internal collision state.
-  const players=a.players.map(p=>({id:p.id,name:p.name,x:p.x,y:p.y,vx:p.vx,vy:p.vy,r:p.r,angle:p.angle,hp:p.hp,maxHp:p.maxHp,alive:p.alive,score:p.score,xp:p.xp,level:p.level,tankClass:p.tankClass,hit:p.hit,kills:p.kills,shieldUntil:p.shieldUntil,cloakAlpha:p.cloakAlpha??1}));
   const p=a.players.find(p=>p.id===id);
-  return {code,revision,time:a.time,world:WORLD,maxPlayers:MAX_PLAYERS,players,
-    self:p?{...players.find(t=>t.id===id),ranks:p.ranks,points:p.points,regen:p.regen,lastDamage:p.lastDamage,speed:p.speed,command:p.command,seq:p.seq}:null,
-    shapes:a.shapes.map(({contacts,...s})=>s),bullets:a.bullets.map(({hits,bulletHits,damage,hp,maxHp,prevX,prevY,...b})=>b)};
+  const visibilityRadius=2200,visibilityRadiusSquared=visibilityRadius*visibilityRadius;
+  const visible=o=>!p||(o.x-p.x)**2+(o.y-p.y)**2<=visibilityRadiusSquared;
+  const projectPlayer=t=>({id:t.id,name:t.name,x:t.x,y:t.y,vx:t.vx,vy:t.vy,r:t.r,angle:t.angle,hp:t.hp,maxHp:t.maxHp,alive:t.alive,score:t.score,xp:t.xp,level:t.level,tankClass:t.tankClass,hit:t.hit,kills:t.kills,shieldUntil:t.shieldUntil,cloakAlpha:t.cloakAlpha??1});
+  const players=a.players.filter(t=>t.id===id||visible(t)).map(projectPlayer);
+  const self=p?{...projectPlayer(p),ranks:p.ranks,points:p.points,regen:p.regen,lastDamage:p.lastDamage,speed:p.speed,command:p.command,seq:p.seq}:null;
+  return {code,revision,time:a.time,world:WORLD,maxPlayers:MAX_PLAYERS,players,self,
+    shapes:a.shapes.filter(visible).map(({contacts,...s})=>s),bullets:a.bullets.filter(visible).map(({hits,bulletHits,damage,hp,maxHp,prevX,prevY,...b})=>b)};
 }
