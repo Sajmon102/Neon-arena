@@ -2,6 +2,9 @@ const http = require('node:http');
 const path = require('node:path');
 const { readFile } = require('node:fs/promises');
 const { webcrypto } = require('node:crypto');
+const { gzip } = require('node:zlib');
+const { promisify } = require('node:util');
+const gzipAsync = promisify(gzip);
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
@@ -69,12 +72,19 @@ function memoryArenaStore() {
 
 const arenaStore = memoryArenaStore();
 
-function sendJson(response, status, body) {
-  response.writeHead(status, {
+async function sendJson(request, response, status, body) {
+  const headers = {
     'Cache-Control': 'no-store',
     'Content-Type': 'application/json; charset=utf-8',
-  });
-  response.end(JSON.stringify(body));
+    'Vary': 'Accept-Encoding',
+  };
+  let payload = Buffer.from(JSON.stringify(body));
+  if (/\bgzip\b/.test(request.headers['accept-encoding'] || '')) {
+    try { payload = await gzipAsync(payload, { level: 1 }); headers['Content-Encoding'] = 'gzip'; }
+    catch { /* Send the uncompressed response if compression fails. */ }
+  }
+  response.writeHead(status, headers);
+  response.end(payload);
 }
 
 function requestOrigin(request) {
@@ -158,23 +168,23 @@ async function main() {
   const server = http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, requestOrigin(request));
-      if (url.pathname === '/health') return sendJson(response, 200, { ok: true, rooms: rooms.size });
+      if (url.pathname === '/health') return sendJson(request, response, 200, { ok: true, rooms: rooms.size });
       if (url.pathname === '/api/arena') {
-        if (request.method !== 'POST') return sendJson(response, 405, { error: 'Dozwolone jest tylko żądanie POST.' });
+        if (request.method !== 'POST') return sendJson(request, response, 405, { error: 'Dozwolone jest tylko żądanie POST.' });
         const origin = request.headers.origin;
-        if (origin && origin !== requestOrigin(request)) return sendJson(response, 403, { error: 'Niedozwolone źródło żądania.' });
+        if (origin && origin !== requestOrigin(request)) return sendJson(request, response, 403, { error: 'Niedozwolone źródło żądania.' });
         const declaredLength = Number(request.headers['content-length']);
-        if (declaredLength > MAX_BODY_BYTES) return sendJson(response, 413, { error: 'Żądanie jest zbyt duże.' });
+        if (declaredLength > MAX_BODY_BYTES) return sendJson(request, response, 413, { error: 'Żądanie jest zbyt duże.' });
         const body = await readJsonBody(request);
         const token = String(request.headers.authorization || '').replace(/^Bearer /, '');
-        return sendJson(response, 200, await handleArena(arenaStore, body, token));
+        return sendJson(request, response, 200, await handleArena(arenaStore, body, token));
       }
       if (await serveStatic(request, response, url)) return;
       response.writeHead(405).end('Method not allowed');
     } catch (error) {
-      if (error instanceof ArenaError || error.status) return sendJson(response, error.status || 400, { error: error.message });
+      if (error instanceof ArenaError || error.status) return sendJson(request, response, error.status || 400, { error: error.message });
       console.error('Request failed', error);
-      sendJson(response, 503, { error: 'Arena online jest chwilowo niedostępna. Spróbuj ponownie; Solo działa bez połączenia.' });
+      sendJson(request, response, 503, { error: 'Arena online jest chwilowo niedostępna. Spróbuj ponownie; Solo działa bez połączenia.' });
     }
   });
 
